@@ -1,0 +1,22 @@
+package org.example.formulaone.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
+public class ListingEventsResponseDto {
+    private UUID eventId;
+    private String name;
+    private String country;
+    private Integer year;
+    private String sessionType;
+    private Instant startTime;
+    private List<DriverDto> drivers;
+}
