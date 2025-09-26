@@ -7,14 +7,13 @@ import jakarta.persistence.Table;
 import lombok.Data;
 
 import java.time.Instant;
-import java.util.UUID;
 
 @Entity
 @Table(name = "events")
 @Data
 public class Event {
     @Id
-    private UUID id; // provider id or internal
+    private String id; // provider id or internal
     private String name;
     private String country;
     @Column(name = "event_year")

@@ -35,3 +35,10 @@ management:
 # Server configuration
 server:
   port: 8080
+
+# OpenF1 API configuration
+openf1:
+  base-url: https://api.openf1.org
+  enabled: true
+  timeout: 5000
+  retry-attempts: 3

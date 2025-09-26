@@ -2,23 +2,27 @@ package org.example.formulaone.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Data;
 
-import java.util.UUID;
-
 @Entity
 @Table(name = "event_drivers", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"eventId", "driverId"})
+        @UniqueConstraint(columnNames = { "eventId", "driverId" })
 })
 @Data
 public class EventDriver {
     // composite key
     @Id
-    private UUID id;
-    private UUID eventId;
+    private String id;
+    private String eventId;
     private Integer driverId;
     private String fullName;
     private Integer odds;
+
+    @ManyToOne
+    @JoinColumn(name = "driverId", referencedColumnName = "id", insertable = false, updatable = false)
+    private Driver driver;
 }

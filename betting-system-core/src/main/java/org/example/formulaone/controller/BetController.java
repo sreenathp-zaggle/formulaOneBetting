@@ -18,7 +18,7 @@ public class BetController {
         this.bettingService = bettingService;
     }
 
-    @PostMapping("")
+    @PostMapping("/place")
     public ResponseEntity<PlaceBetResponseDto> placeBet(@RequestBody PlaceBetRequestDto placeBetRequestDto) {
         try {
             PlaceBetResponseDto responseDto = bettingService.placeBet(placeBetRequestDto);

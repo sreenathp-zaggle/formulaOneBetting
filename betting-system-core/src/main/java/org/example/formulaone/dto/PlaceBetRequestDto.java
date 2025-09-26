@@ -12,7 +12,7 @@ import java.util.UUID;
 @Data
 public class PlaceBetRequestDto {
     private UUID userId;
-    private UUID eventId;
+    private String eventId;
     private Integer driverId;
     private BigDecimal stake;
 }

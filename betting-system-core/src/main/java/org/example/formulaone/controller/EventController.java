@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 public class EventController {
@@ -41,7 +40,7 @@ public class EventController {
     }
 
     @PostMapping("/{eventId}/outcome")
-    public ResponseEntity<?> settleEvent(@PathVariable UUID eventId, @RequestBody OutcomeRequestDto req) {
+    public ResponseEntity<?> settleEvent(@PathVariable String eventId, @RequestBody OutcomeRequestDto req) {
         try {
             OutcomeResponseDto resp = bettingService.settleEvent(eventId, req);
             return ResponseEntity.ok(resp);

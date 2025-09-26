@@ -100,7 +100,7 @@ public class BettingService {
     }
 
     @Transactional
-    public OutcomeResponseDto settleEvent(UUID eventId, OutcomeRequestDto req) {
+    public OutcomeResponseDto settleEvent(String eventId, OutcomeRequestDto req) {
         if (eventId == null || req == null || req.getWinnerDriverId() == null) {
             throw new IllegalArgumentException("missing eventId or winnerDriverId");
         }

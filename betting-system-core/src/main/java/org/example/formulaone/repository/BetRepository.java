@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface BetRepository extends JpaRepository<Bet, UUID> {
-    List<Bet> findByEventIdAndStatus(UUID eventId, String status);
+    List<Bet> findByEventIdAndStatus(String eventId, String status);
 
-    List<Bet> findByEventId(UUID eventId);
+    List<Bet> findByEventId(String eventId);
 }

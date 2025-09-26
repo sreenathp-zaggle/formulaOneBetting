@@ -6,13 +6,12 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
 public class ListingEventsResponseDto {
-    private UUID eventId;
+    private String eventId;
     private String name;
     private String country;
     private Integer year;

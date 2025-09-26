@@ -16,7 +16,7 @@ public class Bet {
     @Id
     private UUID id;
     private UUID userId;
-    private UUID eventId;
+    private String eventId;
     private Integer driverId;
     private BigDecimal stake;
     private Integer odds;

@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class EventService {
@@ -39,7 +38,7 @@ public class EventService {
      * and persist.
      */
     @Transactional
-    public Event findOrCreateEvent(UUID eventId) {
+    public Event findOrCreateEvent(String eventId) {
         return eventRepository.findById(eventId).orElseGet(() -> {
             F1Provider p = f1ProviderFactory.getProvider(null);
             List<ListingEventsResponseDto> sessions = p.fetchSessions(null, null, null);
@@ -65,16 +64,16 @@ public class EventService {
      * Returns the DB EventDriver (with odds).
      */
     @Transactional
-    public EventDriver findOrCreateEventDriver(UUID eventId, Integer driverId) {
+    public EventDriver findOrCreateEventDriver(String eventId, Integer driverId) {
         return eventDriverRepository.findByEventIdAndDriverId(eventId, driverId).orElseGet(() -> {
             F1Provider p = f1ProviderFactory.getProvider(null);
-            List<DriverDto> drivers = p.fetchDriversForSession(eventId.toString());
+            List<DriverDto> drivers = p.fetchDriversForSession(eventId);
             return drivers.stream()
                     .filter(d -> driverId.equals(d.getDriverId()))
                     .findFirst()
                     .map(d -> {
                         EventDriver ed = new EventDriver();
-                        ed.setId(UUID.fromString(eventId + ":" + d.getDriverId().toString()));
+                        ed.setId(eventId + ":" + d.getDriverId().toString());
                         ed.setEventId(eventId);
                         ed.setDriverId(d.getDriverId());
                         ed.setFullName(d.getFullName());
