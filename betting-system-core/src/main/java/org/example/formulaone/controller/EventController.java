@@ -29,18 +29,16 @@ public class EventController {
 
     @GetMapping("/events")
     public ResponseEntity<List<ListingEventsResponseDto>> listEvents(
-            @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) String country,
-            @RequestParam(required = false) String sessionType,
-            @RequestParam(defaultValue = "openf1") String provider
-
-    ) {
+            @RequestParam(value = "year", required = false) Integer year,
+            @RequestParam(value = "country", required = false) String country,
+            @RequestParam(value = "sessionType", required = false) String sessionType,
+            @RequestParam(value = "provider", defaultValue = "openf1") String provider) {
         List<ListingEventsResponseDto> events = eventService.listEvents(year, country, sessionType, provider);
         return ResponseEntity.ok(events);
     }
 
     @PostMapping("/{eventId}/outcome")
-    public ResponseEntity<?> settleEvent(@PathVariable String eventId, @RequestBody OutcomeRequestDto req) {
+    public ResponseEntity<?> settleEvent(@PathVariable("eventId") String eventId, @RequestBody OutcomeRequestDto req) {
         try {
             OutcomeResponseDto resp = bettingService.settleEvent(eventId, req);
             return ResponseEntity.ok(resp);

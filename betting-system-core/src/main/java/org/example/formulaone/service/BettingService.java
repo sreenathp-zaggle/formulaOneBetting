@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,19 +26,16 @@ import java.util.UUID;
 public class BettingService {
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
-    private final EventDriverRepository eventDriverRepository;
     private final BetRepository betRepository;
     private final EventService eventService;
 
     @Autowired
     public BettingService(final UserRepository userRepository, final EventRepository eventRepository,
-            final F1ProviderFactory providerFactory,
-            final EventDriverRepository eventDriverRepository, final BetRepository betRepository,
-            final EventService eventService) {
+                          final BetRepository betRepository,
+                          final EventService eventService) {
         this.userRepository = userRepository;
         this.eventRepository = eventRepository;
         this.eventService = eventService;
-        this.eventDriverRepository = eventDriverRepository;
         this.betRepository = betRepository;
     }
 
@@ -59,8 +57,8 @@ public class BettingService {
             return userRepository.save(u);
         });
 
-        // ensure event exists (will persist if needed)
-        Event event = eventService.findOrCreateEvent(placeBetRequestDto.getEventId());
+        // ensure event exists in database
+        Event event = eventService.findEvent(placeBetRequestDto.getEventId());
 
         // ensure event-driver exists (persist driver + odds if needed)
         EventDriver ed = eventService.findOrCreateEventDriver(placeBetRequestDto.getEventId(),
@@ -89,6 +87,7 @@ public class BettingService {
         bet.setStake(stake);
         bet.setOdds(ed.getOdds());
         bet.setStatus("PENDING");
+        bet.setSettledAt(Instant.now());
         betRepository.save(bet);
 
         PlaceBetResponseDto resp = new PlaceBetResponseDto();

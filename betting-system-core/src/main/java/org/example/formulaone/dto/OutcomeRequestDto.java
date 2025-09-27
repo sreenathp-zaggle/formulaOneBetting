@@ -8,6 +8,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class OutcomeRequestDto {
-    private String eventId;
     private Integer winnerDriverId;
 }
