@@ -2,12 +2,10 @@ package org.example.formulaone.service;
 
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 @Component
 public class F1ProviderFactory {

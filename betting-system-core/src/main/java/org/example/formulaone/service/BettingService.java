@@ -10,7 +10,6 @@ import org.example.formulaone.entity.Event;
 import org.example.formulaone.entity.EventDriver;
 import org.example.formulaone.entity.User;
 import org.example.formulaone.repository.BetRepository;
-import org.example.formulaone.repository.EventDriverRepository;
 import org.example.formulaone.repository.EventRepository;
 import org.example.formulaone.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 

@@ -2,22 +2,13 @@ package org.example.formulaone.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
-import org.example.formulaone.dto.DriverDto;
-import org.example.formulaone.dto.ListingEventsResponseDto;
 import org.example.formulaone.exceptions.HttpClientException;
-import org.example.formulaone.util.RandomOdds;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * OpenF1 provider adapter.
@@ -45,11 +36,15 @@ public class OpenF1Provider implements F1Provider {
         this.enabled = enabled;
     }
 
-    @Override
-    public List<ListingEventsResponseDto> fetchSessions(Integer year, String country, String sessionType) {
+    /**
+     * Fetches raw session data from OpenF1 API without any business logic
+     * processing.
+     * Returns raw JsonNode array that can be processed by service layer.
+     */
+    public JsonNode fetchRawSessions(Integer year, String country, String sessionType) {
         if (!enabled) {
-            log.debug("OpenF1 provider is disabled. Returning empty list.");
-            return Collections.emptyList();
+            log.debug("OpenF1 provider is disabled. Returning null.");
+            return null;
         }
 
         Map<String, String> filters = new HashMap<>();
@@ -69,66 +64,37 @@ public class OpenF1Provider implements F1Provider {
             root = httpClient.getJson(url, filters);
         } catch (HttpClientException ex) {
             if (ex.getMessage().contains("429")) {
-                log.warn("Rate limit exceeded for OpenF1 sessions API. Returning empty list.");
+                log.warn("Rate limit exceeded for OpenF1 sessions API. Returning null.");
             } else {
                 log.warn("OpenF1 sessions fetch failed: {}", ex.getMessage());
             }
-            return Collections.emptyList();
+            return null;
         } catch (Exception ex) {
             log.error("Unexpected error fetching sessions: ", ex);
-            return Collections.emptyList();
+            return null;
         }
 
         JsonNode sessionsArray = (root != null && root.isArray()) ? root : (root != null ? root.path("data") : null);
         if (sessionsArray == null || !sessionsArray.isArray()) {
             log.debug("No sessions array present in provider response");
-            return Collections.emptyList();
+            return null;
         }
 
-        List<ListingEventsResponseDto> eventsResponseDtos = new ArrayList<>();
-
-        for (JsonNode sessionNode : sessionsArray) {
-            try {
-                String sessionKey = sessionNode.path("session_key").isMissingNode() ? null
-                        : sessionNode.path("session_key").asText();
-                String sessionName = textOrNull(sessionNode, "session_name");
-                String sessionTypeVal = textOrNull(sessionNode, "session_type");
-                String countryName = textOrNull(sessionNode, "country_name");
-                Integer yearVal = sessionNode.has("year") && sessionNode.get("year").canConvertToInt()
-                        ? sessionNode.get("year").intValue()
-                        : null;
-                String circuit = textOrNull(sessionNode, "circuit_short_name");
-
-                ListingEventsResponseDto eventDto = new ListingEventsResponseDto();
-                eventDto.setEventId(sessionKey != null ? sessionKey : UUID.randomUUID().toString());
-                eventDto.setName(buildEventName(sessionName, circuit));
-                eventDto.setCountry(countryName);
-                eventDto.setYear(yearVal);
-                eventDto.setSessionType(sessionTypeVal);
-                eventDto.setStartTime(parseStartTime(sessionNode));
-
-                // Fetch drivers for this session
-                List<DriverDto> drivers = fetchDriversForSession(sessionKey);
-                eventDto.setDrivers(drivers);
-
-                eventsResponseDtos.add(eventDto);
-            } catch (Exception ex) {
-                log.warn("Skipped a session due to mapping error: {}", ex.getMessage());
-            }
-        }
-
-        return eventsResponseDtos;
+        return sessionsArray;
     }
 
-    @Override
-    public List<DriverDto> fetchDriversForSession(String sessionKey) {
+    /**
+     * Fetches raw driver data from OpenF1 API without any business logic processing.
+     * Returns raw JsonNode array that can be processed by service layer.
+     */
+    public JsonNode fetchRawDriversForSession(String sessionKey) {
         if (!enabled) {
-            log.debug("OpenF1 provider is disabled. Returning empty list.");
-            return Collections.emptyList();
+            log.debug("OpenF1 provider is disabled. Returning null.");
+            return null;
         }
 
         if (sessionKey == null) {
-            return Collections.emptyList();
+            return null;
         }
 
         String url = baseUrl + "/v1/drivers";
@@ -139,96 +105,28 @@ public class OpenF1Provider implements F1Provider {
             root = httpClient.getJson(url, queryParams);
         } catch (HttpClientException ex) {
             if (ex.getMessage().contains("429")) {
-                log.warn("Rate limit exceeded for OpenF1 drivers API. Returning empty list for session: {}",
+                log.warn("Rate limit exceeded for OpenF1 drivers API. Returning null for session: {}",
                         sessionKey);
             } else {
                 log.warn("Failed to call OpenF1 drivers for session {}: {}", sessionKey, ex.getMessage());
             }
-            return Collections.emptyList();
+            return null;
         } catch (Exception ex) {
             log.error("Unexpected error calling OpenF1 drivers for session " + sessionKey, ex);
-            return Collections.emptyList();
+            return null;
         }
 
         JsonNode driversArray = (root != null && root.isArray()) ? root : (root != null ? root.path("data") : null);
         if (driversArray == null || !driversArray.isArray()) {
             log.debug("No drivers array in provider response for session {}", sessionKey);
-            return Collections.emptyList();
+            return null;
         }
 
-        List<DriverDto> drivers = new ArrayList<>();
-        for (JsonNode driverNode : driversArray) {
-            try {
-                String driverNumber = textOrNull(driverNode, "driver_number");
-                if (driverNumber == null) {
-                    driverNumber = textOrNull(driverNode, "id");
-                }
-
-                String fullName = textOrNull(driverNode, "full_name");
-                if (fullName == null) {
-                    String firstName = textOrNull(driverNode, "first_name");
-                    String lastName = textOrNull(driverNode, "last_name");
-                    if (firstName != null || lastName != null) {
-                        fullName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : ""))
-                                .trim();
-                    }
-                }
-
-                DriverDto driverDto = new DriverDto();
-                driverDto.setDriverId(Integer.parseInt(driverNumber));
-                driverDto.setFullName(fullName != null ? fullName : "Driver " + driverDto.getDriverId());
-                driverDto.setOdds(RandomOdds.pick());
-
-                drivers.add(driverDto);
-            } catch (Exception ex) {
-                log.warn("Skipping driver mapping due to error: {}", ex.getMessage());
-            }
-        }
-
-        return drivers;
+        return driversArray;
     }
 
     @Override
     public String getName() {
         return "openf1";
-    }
-
-    /**
-     * Builds event name from session name and circuit.
-     */
-    private String buildEventName(String sessionName, String circuit) {
-        String name = sessionName != null ? sessionName : "Session";
-        return circuit != null ? name + " - " + circuit : name;
-    }
-
-    /**
-     * Parses start time from session node.
-     */
-    private Instant parseStartTime(JsonNode sessionNode) {
-        String dateStart = textOrNull(sessionNode, "date_start");
-        if (dateStart == null) {
-            return null;
-        }
-
-        try {
-            OffsetDateTime odt = OffsetDateTime.parse(dateStart);
-            return odt.toInstant();
-        } catch (DateTimeParseException ex) {
-            try {
-                return Instant.parse(dateStart);
-            } catch (Exception ignore) {
-                return null;
-            }
-        }
-    }
-
-    private static String textOrNull(JsonNode n, String key) {
-        if (n == null || key == null)
-            return null;
-        JsonNode v = n.get(key);
-        if (v == null || v.isNull())
-            return null;
-        String t = v.asText().trim();
-        return t.isEmpty() ? null : t;
     }
 }

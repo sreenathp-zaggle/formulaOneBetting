@@ -1,5 +1,6 @@
 package org.example.formulaone.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.example.formulaone.dto.ListingEventsResponseDto;
 import org.example.formulaone.dto.OutcomeRequestDto;
 import org.example.formulaone.dto.OutcomeResponseDto;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,6 +23,8 @@ import java.util.List;
  * Provides endpoints for listing events and settling event outcomes.
  */
 @RestController
+@Slf4j
+@RequestMapping("/events")
 public class EventController {
     private final EventService eventService;
     private final BettingService bettingService;
@@ -40,7 +44,7 @@ public class EventController {
      * @param provider    The data provider to use (defaults to "openf1")
      * @return List of events matching the criteria
      */
-    @GetMapping("/events")
+    @GetMapping("/list")
     public ResponseEntity<List<ListingEventsResponseDto>> listEvents(
             @RequestParam(value = "year", required = false) Integer year,
             @RequestParam(value = "country", required = false) String country,
@@ -62,16 +66,7 @@ public class EventController {
     public ResponseEntity<?> settleEvent(
             @PathVariable("eventId") String eventId,
             @RequestBody OutcomeRequestDto outcomeRequest) {
-
-        try {
-            OutcomeResponseDto response = bettingService.settleEvent(eventId, outcomeRequest);
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().body(ex.getMessage());
-        } catch (IllegalStateException ex) {
-            return ResponseEntity.status(409).body(ex.getMessage());
-        } catch (Exception ex) {
-            return ResponseEntity.status(500).body(ex.getMessage());
-        }
+        OutcomeResponseDto response = bettingService.settleEvent(eventId, outcomeRequest);
+        return ResponseEntity.ok(response);
     }
 }
