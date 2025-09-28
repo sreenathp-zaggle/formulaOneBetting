@@ -32,8 +32,4 @@ public class F1ProviderFactory {
             throw new IllegalArgumentException("No provider found: " + name);
         return p;
     }
-
-    public Set<String> availableProviders() {
-        return Collections.unmodifiableSet(providersMap.keySet());
-    }
 }

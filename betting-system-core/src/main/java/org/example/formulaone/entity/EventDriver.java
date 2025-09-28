@@ -21,8 +21,4 @@ public class EventDriver {
     private Integer driverId;
     private String fullName;
     private Integer odds;
-
-    @ManyToOne
-    @JoinColumn(name = "driverId", referencedColumnName = "id", insertable = false, updatable = false)
-    private Driver driver;
 }

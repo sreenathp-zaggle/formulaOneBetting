@@ -39,10 +39,3 @@ CREATE TABLE bets (
                       placed_at TIMESTAMP,
                       settled_at TIMESTAMP
 );
-
-CREATE TABLE drivers (
-                         id          INTEGER PRIMARY KEY,
-                         country     VARCHAR(100) NOT NULL,
-                         full_name   VARCHAR(150) NOT NULL,
-                         team        VARCHAR(150) NOT NULL
-);

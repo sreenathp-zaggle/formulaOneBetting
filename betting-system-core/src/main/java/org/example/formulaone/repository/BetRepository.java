@@ -8,6 +8,4 @@ import java.util.UUID;
 
 public interface BetRepository extends JpaRepository<Bet, UUID> {
     List<Bet> findByEventIdAndStatus(String eventId, String status);
-
-    List<Bet> findByEventId(String eventId);
 }

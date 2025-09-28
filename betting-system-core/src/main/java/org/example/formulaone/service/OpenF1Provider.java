@@ -53,12 +53,15 @@ public class OpenF1Provider implements F1Provider {
         }
 
         Map<String, String> filters = new HashMap<>();
-        if (year != null)
+        if (year != null) {
             filters.put("year", String.valueOf(year));
-        if (country != null && !country.isBlank())
+        }
+        if (country != null && !country.isBlank()) {
             filters.put("country_name", country);
-        if (sessionType != null && !sessionType.isBlank())
+        }
+        if (sessionType != null && !sessionType.isBlank()) {
             filters.put("session_name", sessionType);
+        }
 
         String url = baseUrl + "/v1/sessions";
         JsonNode root;
@@ -84,44 +87,31 @@ public class OpenF1Provider implements F1Provider {
 
         List<ListingEventsResponseDto> eventsResponseDtos = new ArrayList<>();
 
-        for (JsonNode s : sessionsArray) {
+        for (JsonNode sessionNode : sessionsArray) {
             try {
-                String sessionKey = s.path("session_key").isMissingNode() ? null : s.path("session_key").asText();
-                String sessionName = textOrNull(s, "session_name");
-                String sessionTypeVal = textOrNull(s, "session_type");
-                String countryName = textOrNull(s, "country_name");
-                Integer yyyy = s.has("year") && s.get("year").canConvertToInt() ? s.get("year").intValue() : null;
-                String dateStart = textOrNull(s, "date_start");
-                String dateEnd = textOrNull(s, "date_end");
-                String circuit = textOrNull(s, "circuit_short_name"); // optional
+                String sessionKey = sessionNode.path("session_key").isMissingNode() ? null
+                        : sessionNode.path("session_key").asText();
+                String sessionName = textOrNull(sessionNode, "session_name");
+                String sessionTypeVal = textOrNull(sessionNode, "session_type");
+                String countryName = textOrNull(sessionNode, "country_name");
+                Integer yearVal = sessionNode.has("year") && sessionNode.get("year").canConvertToInt()
+                        ? sessionNode.get("year").intValue()
+                        : null;
+                String circuit = textOrNull(sessionNode, "circuit_short_name");
 
-                ListingEventsResponseDto eventsResponseDto = new ListingEventsResponseDto();
+                ListingEventsResponseDto eventDto = new ListingEventsResponseDto();
+                eventDto.setEventId(sessionKey != null ? sessionKey : UUID.randomUUID().toString());
+                eventDto.setName(buildEventName(sessionName, circuit));
+                eventDto.setCountry(countryName);
+                eventDto.setYear(yearVal);
+                eventDto.setSessionType(sessionTypeVal);
+                eventDto.setStartTime(parseStartTime(sessionNode));
 
-                eventsResponseDto.setEventId(sessionKey != null ? sessionKey : UUID.randomUUID().toString());
-                eventsResponseDto.setName(
-                        (sessionName != null ? sessionName : "Session") + (circuit != null ? " - " + circuit : ""));
-                eventsResponseDto.setCountry(countryName);
-                eventsResponseDto.setYear(yyyy);
-                eventsResponseDto.setSessionType(sessionTypeVal);
-
-                if (dateStart != null) {
-                    try {
-                        OffsetDateTime odt = OffsetDateTime.parse(dateStart);
-                        eventsResponseDto.setStartTime(odt.toInstant());
-                    } catch (DateTimeParseException ex) {
-                        // try parsing as Instant directly as fallback
-                        try {
-                            eventsResponseDto.setStartTime(Instant.parse(dateStart));
-                        } catch (Exception ignore) {
-                        }
-                    }
-                }
-
-                // fetch drivers for this sessionKey (if sessionKey missing we skip drivers)
+                // Fetch drivers for this session
                 List<DriverDto> drivers = fetchDriversForSession(sessionKey);
-                eventsResponseDto.setDrivers(drivers);
+                eventDto.setDrivers(drivers);
 
-                eventsResponseDtos.add(eventsResponseDto);
+                eventsResponseDtos.add(eventDto);
             } catch (Exception ex) {
                 log.warn("Skipped a session due to mapping error: {}", ex.getMessage());
             }
@@ -137,15 +127,16 @@ public class OpenF1Provider implements F1Provider {
             return Collections.emptyList();
         }
 
-        if (sessionKey == null)
+        if (sessionKey == null) {
             return Collections.emptyList();
+        }
 
         String url = baseUrl + "/v1/drivers";
-        Map<String, String> q = Collections.singletonMap("session_key", sessionKey);
+        Map<String, String> queryParams = Collections.singletonMap("session_key", sessionKey);
 
         JsonNode root;
         try {
-            root = httpClient.getJson(url, q);
+            root = httpClient.getJson(url, queryParams);
         } catch (HttpClientException ex) {
             if (ex.getMessage().contains("429")) {
                 log.warn("Rate limit exceeded for OpenF1 drivers API. Returning empty list for session: {}",
@@ -165,40 +156,70 @@ public class OpenF1Provider implements F1Provider {
             return Collections.emptyList();
         }
 
-        List<DriverDto> out = new ArrayList<>();
-        for (JsonNode d : driversArray) {
+        List<DriverDto> drivers = new ArrayList<>();
+        for (JsonNode driverNode : driversArray) {
             try {
-                // prefer driver_number, fall back to id
-                String driverNumber = textOrNull(d, "driver_number");
-                if (driverNumber == null)
-                    driverNumber = textOrNull(d, "id");
-
-                // prefer full_name, else compose first_name + last_name
-                String fullName = textOrNull(d, "full_name");
-                if (fullName == null) {
-                    String first = textOrNull(d, "first_name");
-                    String last = textOrNull(d, "last_name");
-                    if (first != null || last != null)
-                        fullName = ((first == null ? "" : first) + " " + (last == null ? "" : last)).trim();
+                String driverNumber = textOrNull(driverNode, "driver_number");
+                if (driverNumber == null) {
+                    driverNumber = textOrNull(driverNode, "id");
                 }
 
-                DriverDto dd = new DriverDto();
-                dd.setDriverId(driverNumber != null ? Integer.parseInt(driverNumber) : (int) (Math.random() * 1000));
-                dd.setFullName(fullName != null ? fullName : "Driver " + dd.getDriverId());
-                dd.setOdds(RandomOdds.pick()); // 2 or 3 or 4
+                String fullName = textOrNull(driverNode, "full_name");
+                if (fullName == null) {
+                    String firstName = textOrNull(driverNode, "first_name");
+                    String lastName = textOrNull(driverNode, "last_name");
+                    if (firstName != null || lastName != null) {
+                        fullName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : ""))
+                                .trim();
+                    }
+                }
 
-                out.add(dd);
+                DriverDto driverDto = new DriverDto();
+                driverDto.setDriverId(Integer.parseInt(driverNumber));
+                driverDto.setFullName(fullName != null ? fullName : "Driver " + driverDto.getDriverId());
+                driverDto.setOdds(RandomOdds.pick());
+
+                drivers.add(driverDto);
             } catch (Exception ex) {
                 log.warn("Skipping driver mapping due to error: {}", ex.getMessage());
             }
         }
 
-        return out;
+        return drivers;
     }
 
     @Override
     public String getName() {
         return "openf1";
+    }
+
+    /**
+     * Builds event name from session name and circuit.
+     */
+    private String buildEventName(String sessionName, String circuit) {
+        String name = sessionName != null ? sessionName : "Session";
+        return circuit != null ? name + " - " + circuit : name;
+    }
+
+    /**
+     * Parses start time from session node.
+     */
+    private Instant parseStartTime(JsonNode sessionNode) {
+        String dateStart = textOrNull(sessionNode, "date_start");
+        if (dateStart == null) {
+            return null;
+        }
+
+        try {
+            OffsetDateTime odt = OffsetDateTime.parse(dateStart);
+            return odt.toInstant();
+        } catch (DateTimeParseException ex) {
+            try {
+                return Instant.parse(dateStart);
+            } catch (Exception ignore) {
+                return null;
+            }
+        }
     }
 
     private static String textOrNull(JsonNode n, String key) {

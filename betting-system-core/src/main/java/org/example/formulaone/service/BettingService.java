@@ -1,5 +1,6 @@
 package org.example.formulaone.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.example.formulaone.dto.OutcomeRequestDto;
 import org.example.formulaone.dto.OutcomeResponseDto;
 import org.example.formulaone.dto.PlaceBetRequestDto;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class BettingService {
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
@@ -41,7 +43,6 @@ public class BettingService {
 
     @Transactional
     public PlaceBetResponseDto placeBet(@RequestBody PlaceBetRequestDto placeBetRequestDto) {
-        // basic validation
         if (placeBetRequestDto.getUserId() == null || placeBetRequestDto.getEventId() == null ||
                 placeBetRequestDto.getDriverId() == null || placeBetRequestDto.getStake() == null) {
             throw new IllegalArgumentException("missing required fields");
@@ -51,21 +52,21 @@ public class BettingService {
         if (stake.signum() <= 0)
             throw new IllegalArgumentException("stake must be > 0");
 
-        // ensure user exists (if not create with gift 100)
+        log.info("Ensure user exists, if not create with gift 100");
         User user = userRepository.findById(placeBetRequestDto.getUserId()).orElseGet(() -> {
             User u = new User(placeBetRequestDto.getUserId(), new BigDecimal("100.00"));
             return userRepository.save(u);
         });
 
-        // ensure event exists in database
+        log.info("Checking if event exists as first listing events should be called first before this");
         Event event = eventService.findEvent(placeBetRequestDto.getEventId());
 
-        // ensure event-driver exists (persist driver + odds if needed)
+        log.info("Fetch existing drivers for the event or calling again API to fetch latest drivers for event");
         EventDriver ed = eventService.findOrCreateEventDriver(placeBetRequestDto.getEventId(),
                 placeBetRequestDto.getDriverId());
 
-        // check balance
-        if (user.getBalance().compareTo(stake) < 0) {
+        int updated = userRepository.withdrawIfSufficient(user.getId(), stake);
+        if (updated == 0) {
             PlaceBetResponseDto r = new PlaceBetResponseDto();
             r.setBetId(null);
             r.setStatus("FAILED");
@@ -74,9 +75,7 @@ public class BettingService {
             return r;
         }
 
-        // deduct stake and persist bet
-        user.setBalance(user.getBalance().subtract(stake));
-        userRepository.save(user);
+        log.info("Saving bet record");
 
         UUID betId = UUID.randomUUID();
         Bet bet = new Bet();
@@ -87,14 +86,14 @@ public class BettingService {
         bet.setStake(stake);
         bet.setOdds(ed.getOdds());
         bet.setStatus("PENDING");
-        bet.setSettledAt(Instant.now());
+        bet.setSettledAt(null);
         betRepository.save(bet);
 
         PlaceBetResponseDto resp = new PlaceBetResponseDto();
         resp.setBetId(betId);
         resp.setStatus(bet.getStatus());
         resp.setOdds(bet.getOdds());
-        resp.setMessage("placed");
+        resp.setMessage("placed Bet");
         return resp;
     }
 
@@ -103,16 +102,12 @@ public class BettingService {
         if (eventId == null || req == null || req.getWinnerDriverId() == null) {
             throw new IllegalArgumentException("missing eventId or winnerDriverId");
         }
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("event not found"));
 
-        if (event.getOutcomeDriverId() != null) {
+        // Attempt to set event outcome atomically; returns 0 if outcome already set
+        int updated = eventRepository.setOutcomeIfNotSet(eventId, req.getWinnerDriverId());
+        if (updated == 0) {
             throw new IllegalStateException("outcome already set");
         }
-
-        // set outcome on event
-        event.setOutcomeDriverId(req.getWinnerDriverId());
-        eventRepository.save(event);
 
         List<Bet> bets = betRepository.findByEventIdAndStatus(eventId, "PENDING");
         int settled = 0;
@@ -123,9 +118,8 @@ public class BettingService {
             if (req.getWinnerDriverId().equals(b.getDriverId())) {
                 b.setStatus("WON");
 
-                // payout = stake * odds
+                log.info("Calculate payout stake* odds and credit it to user");
                 BigDecimal payout = b.getStake().multiply(BigDecimal.valueOf(b.getOdds()));
-                // credit to user
                 User u = userRepository.findById(b.getUserId()).orElseThrow();
                 u.setBalance(u.getBalance().add(payout));
                 userRepository.save(u);
