@@ -4,8 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.formulaone.dto.ListingEventsResponseDto;
 import org.example.formulaone.dto.OutcomeRequestDto;
 import org.example.formulaone.dto.OutcomeResponseDto;
-import org.example.formulaone.service.BettingService;
 import org.example.formulaone.service.EventService;
+import org.example.formulaone.service.SettlementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
 import java.util.List;
 
 /**
@@ -27,12 +28,12 @@ import java.util.List;
 @RequestMapping("/events")
 public class EventController {
     private final EventService eventService;
-    private final BettingService bettingService;
+    private final SettlementService settlementService;
 
     @Autowired
-    public EventController(final EventService eventService, final BettingService bettingService) {
+    public EventController(final EventService eventService, final SettlementService settlementService) {
         this.eventService = eventService;
-        this.bettingService = bettingService;
+        this.settlementService = settlementService;
     }
 
     /**
@@ -65,8 +66,8 @@ public class EventController {
     @PostMapping("/{eventId}/outcome")
     public ResponseEntity<?> settleEvent(
             @PathVariable("eventId") String eventId,
-            @RequestBody OutcomeRequestDto outcomeRequest) {
-        OutcomeResponseDto response = bettingService.settleEvent(eventId, outcomeRequest);
+            @Valid @RequestBody OutcomeRequestDto outcomeRequest) {
+        OutcomeResponseDto response = settlementService.settleEvent(eventId, outcomeRequest);
         return ResponseEntity.ok(response);
     }
 }

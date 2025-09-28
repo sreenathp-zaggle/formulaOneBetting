@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 @RestController
 @RequestMapping("/bets")
 public class BetController {
@@ -21,8 +23,8 @@ public class BetController {
         this.bettingService = bettingService;
     }
 
-    @PostMapping("/place")
-    public ResponseEntity<PlaceBetResponseDto> placeBet(@RequestBody PlaceBetRequestDto placeBetRequestDto) {
+    @PostMapping
+    public ResponseEntity<PlaceBetResponseDto> placeBet(@Valid @RequestBody PlaceBetRequestDto placeBetRequestDto) {
 
         PlaceBetResponseDto response = bettingService.placeBet(placeBetRequestDto);
         if ("FAILED".equals(response.getStatus())) {
