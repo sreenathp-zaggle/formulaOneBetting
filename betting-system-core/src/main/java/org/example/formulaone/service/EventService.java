@@ -28,16 +28,23 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class EventService {
-    private final OpenF1Provider openF1Provider;
+    private final F1ProviderFactory providerFactory;
     private final EventRepository eventRepository;
     private final EventDriverRepository eventDriverRepository;
 
     @Autowired
-    public EventService(OpenF1Provider openF1Provider, EventRepository eventRepository,
+    public EventService(F1ProviderFactory providerFactory, EventRepository eventRepository,
             EventDriverRepository eventDriverRepository) {
-        this.openF1Provider = openF1Provider;
+        this.providerFactory = providerFactory;
         this.eventRepository = eventRepository;
         this.eventDriverRepository = eventDriverRepository;
+    }
+
+    /**
+     * Gets the appropriate F1 provider based on the provider name.
+     */
+    private F1Provider getProvider(String providerName) {
+        return providerFactory.getProvider(providerName);
     }
 
     @Transactional
@@ -54,7 +61,6 @@ public class EventService {
         return fetchAndStoreEventsFromProvider(year, country, sessionType, provider);
     }
 
-    @Transactional
     public Event findEvent(String eventId) {
         return eventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found: " + eventId +
@@ -141,7 +147,8 @@ public class EventService {
      */
     private List<ListingEventsResponseDto> fetchAndStoreEventsFromProvider(Integer year, String country,
             String sessionType, String provider) {
-        JsonNode sessionsArray = openF1Provider.fetchRawSessions(year, country, sessionType);
+        F1Provider f1Provider = getProvider(provider);
+        JsonNode sessionsArray = f1Provider.fetchRawSessions(year, country, sessionType);
 
         if (sessionsArray == null || !sessionsArray.isArray()) {
             return Collections.emptyList();
@@ -291,7 +298,8 @@ public class EventService {
      * response format.
      */
     private List<DriverDto> buildDriversForSession(String sessionKey) {
-        JsonNode driversArray = openF1Provider.fetchRawDriversForSession(sessionKey);
+        F1Provider f1Provider = getProvider("openf1");
+        JsonNode driversArray = f1Provider.fetchRawDriversForSession(sessionKey);
 
         if (driversArray == null || !driversArray.isArray()) {
             return Collections.emptyList();

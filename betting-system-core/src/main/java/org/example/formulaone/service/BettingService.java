@@ -1,10 +1,10 @@
 package org.example.formulaone.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.example.formulaone.util.Constants;
 import org.example.formulaone.dto.PlaceBetRequestDto;
 import org.example.formulaone.dto.PlaceBetResponseDto;
 import org.example.formulaone.entity.Bet;
-import org.example.formulaone.entity.Event;
 import org.example.formulaone.entity.EventDriver;
 import org.example.formulaone.entity.User;
 import org.example.formulaone.repository.BetRepository;
@@ -40,7 +40,7 @@ public class BettingService {
         User user = userService.ensureUserExists(placeBetRequestDto.getUserId());
 
         log.info("Checking if event exists as first listing events should be called first before this");
-        Event event = eventService.findEvent(placeBetRequestDto.getEventId());
+        eventService.findEvent(placeBetRequestDto.getEventId()); // Validation only
 
         log.info("Fetch existing drivers for the event or calling again API to fetch latest drivers for event");
         EventDriver ed = eventService.findOrCreateEventDriver(placeBetRequestDto.getEventId(),
@@ -48,15 +48,16 @@ public class BettingService {
 
         int updated = userService.withdrawIfSufficient(user.getId(), stake);
         if (updated == 0) {
+            log.warn("Insufficient balance for user: {}, required: {}", user.getId(), stake);
             PlaceBetResponseDto r = new PlaceBetResponseDto();
             r.setBetId(null);
-            r.setStatus("FAILED");
-            r.setMessage("insufficient_balance");
+            r.setStatus(Constants.BET_STATUS_FAILED);
+            r.setMessage(Constants.ERROR_INSUFFICIENT_BALANCE);
             r.setOdds(ed.getOdds());
             return r;
         }
 
-        log.info("Saving bet record");
+        log.info("Creating bet record for user: {}", user.getId());
 
         UUID betId = UUID.randomUUID();
         Bet bet = new Bet();
@@ -66,15 +67,17 @@ public class BettingService {
         bet.setDriverId(placeBetRequestDto.getDriverId());
         bet.setStake(stake);
         bet.setOdds(ed.getOdds());
-        bet.setStatus("PENDING");
+        bet.setStatus(Constants.BET_STATUS_PENDING);
         bet.setSettledAt(null);
         betRepository.save(bet);
+
+        log.info("Bet placed successfully with ID: {}", betId);
 
         PlaceBetResponseDto resp = new PlaceBetResponseDto();
         resp.setBetId(betId);
         resp.setStatus(bet.getStatus());
         resp.setOdds(bet.getOdds());
-        resp.setMessage("placed Bet");
+        resp.setMessage(Constants.SUCCESS_BET_PLACED);
         return resp;
     }
 }

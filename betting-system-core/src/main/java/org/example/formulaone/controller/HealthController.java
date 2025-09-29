@@ -14,7 +14,6 @@ public class HealthController {
         Map<String, String> response = new HashMap<>();
         response.put("status", "UP");
         response.put("message", "Application is running");
-        response.put("h2-console", "http://localhost:8080/h2-console");
         return response;
     }
 }

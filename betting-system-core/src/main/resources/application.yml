@@ -23,6 +23,13 @@ spring:
 server:
   port: 8080
 
+# Basic logging configuration
+logging:
+  level:
+    org.example.formulaone: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
 # OpenF1 API configuration
 openf1:
   base-url: https://api.openf1.org

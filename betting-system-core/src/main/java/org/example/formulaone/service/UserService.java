@@ -1,6 +1,7 @@
 package org.example.formulaone.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.example.formulaone.util.Constants;
 import org.example.formulaone.entity.User;
 import org.example.formulaone.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +18,6 @@ import java.util.UUID;
 @Slf4j
 public class UserService {
     private final UserRepository userRepository;
-    private static final BigDecimal GIFT_BALANCE = new BigDecimal("100.00");
 
     @Autowired
     public UserService(UserRepository userRepository) {
@@ -31,7 +31,7 @@ public class UserService {
     public User ensureUserExists(UUID userId) {
         return userRepository.findById(userId).orElseGet(() -> {
             log.info("Creating new user with gift balance: {}", userId);
-            User user = new User(userId, GIFT_BALANCE);
+            User user = new User(userId, Constants.GIFT_BALANCE);
             return userRepository.save(user);
         });
     }

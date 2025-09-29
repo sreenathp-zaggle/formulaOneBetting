@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
@@ -19,6 +20,20 @@ import java.util.Map;
 @ControllerAdvice
 @Slf4j
 public class ApiExceptionHandler {
+
+    /**
+     * Handle validation errors (400) - Invalid arguments, missing fields.
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidationErrors(
+            MethodArgumentNotValidException ex, WebRequest request) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .findFirst()
+                .orElse("Validation failed");
+        log.warn("Validation error at {}: {}", request.getDescription(false), message);
+        return buildResponse(HttpStatus.BAD_REQUEST, message, request);
+    }
 
     /**
      * Handle bad request errors (400) - Invalid arguments, missing fields.
